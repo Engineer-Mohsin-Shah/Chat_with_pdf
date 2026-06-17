@@ -117,23 +117,11 @@ Then open:
 - If Gemini returns 429 errors, quota/rate limit is coming from Google API quotas.
 - If document text is weak or scanned images, QA quality may be low unless OCR is added.
 
-## Attach a frontend screenshot in README
+## frontend UI
 
-If you want to show UI image in this README:
-
-1. Save the screenshot inside the repo (recommended):  
-   `static/screenshots/agent-ui.png`
-2. Add this markdown line in `README.md`:
 
 ![Chat UI Screenshot](static/screenshots/agent-ui.png)
 
-```
-Notes:
-- Relative paths work on GitHub and local markdown previews.
-- Keep image size moderate (PNG/JPG under a few MB) for faster load.
-- You can also use a hosted image URL if needed:
-
-```
 
 ## Requirements snapshot (high level)
 

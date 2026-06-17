@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat with PDF</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #d8dce8;
+      --accent: #2563eb;
+      --accent-dark: #1e4fd6;
+      --danger: #dc2626;
+      --good: #16a34a;
+      --shadow: 0 20px 35px rgba(15, 23, 42, 0.1);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(130deg, #f8fbff 0%, #eef4ff 45%, #f8f5ff 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      padding: 18px;
+      gap: 18px;
+    }
+
+    .sidebar {
+      width: min(340px, 34vw);
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .card {
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-area {
+      flex: 1;
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 54px);
+    }
+
+    .row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    input, select, textarea, button {
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font: inherit;
+      color: inherit;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.18s ease;
+    }
+
+    button:hover { background: var(--accent-dark); }
+
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #f1f5f9;
+      border: 1px solid var(--line);
+      white-space: pre-wrap;
+    }
+
+    .status.good { color: #166534; border-color: #bbf7d0; background: #f0fdf4; }
+    .status.err { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+
+    .chat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .chat-top h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .chat-log {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      background: #f8fafc;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 340px;
+    }
+
+    .bubble {
+      border-radius: 12px;
+      padding: 10px 12px;
+      max-width: 80%;
+      line-height: 1.4;
+      font-size: 15px;
+      box-shadow: 0 4px 15px rgba(15, 23, 42, .05);
+    }
+
+    .user {
+      align-self: flex-end;
+      background: #dbeafe;
+      border: 1px solid #bfdbfe;
+    }
+
+    .assistant {
+      align-self: flex-start;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .meta {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .form-actions button { min-width: 115px; }
+
+    .inline-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .inline-two .row { min-width: 0; }
+
+    @media (max-width: 980px) {
+      .page { flex-direction: column; }
+      .sidebar { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <div>
+        <h2>Chat with PDF</h2>
+        <p class="muted">Upload a PDF, DOCX, or TXT file and then chat with it.</p>
+      </div>
+
+      <div class="card">
+        <h3>1) Upload Document</h3>
+        <div class="row">
+          <label for="fileInput">Document file</label>
+          <input id="fileInput" type="file" accept=".pdf,.docx,.txt" />
+          <span class="muted">Saved as one vector store: old store is replaced automatically.</span>
+        </div>
+        <div class="inline-two">
+          <div class="row">
+            <label for="chunkSize">Chunk size</label>
+            <input id="chunkSize" type="number" min="64" max="2000" step="1" value="256" />
+          </div>
+          <div class="row">
+            <label for="uploadK">Upload K</label>
+            <input id="uploadK" type="number" min="1" max="20" step="1" value="3" />
+          </div>
+        </div>
+        <button id="uploadBtn">Upload & Index</button>
+        <div id="uploadStatus" class="status muted">No document uploaded yet.</div>
+      </div>
+
+      <div class="card">
+        <h3>2) Chat Settings</h3>
+        <div class="row">
+          <label for="modelSelect">Model</label>
+          <select id="modelSelect">
+            <option value="gemini">gemini</option>
+            <option value="llama">llama</option>
+          </select>
+          <span class="muted">Default: gemini</span>
+        </div>
+        <div class="row">
+          <label for="askK">K for retrieval</label>
+          <input id="askK" type="number" min="1" max="20" step="1" value="3" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>API Target</h3>
+        <input id="apiBase" type="text" value="http://localhost:8000" />
+        <p class="muted">Make sure FastAPI is running and endpoints /upload/ and /ask/ are available.</p>
+      </div>
+    </aside>
+
+    <section class="chat-area">
+      <div class="chat-top">
+        <div>
+          <h1>Document Chat</h1>
+          <p class="muted">Ask questions, request summaries, or ask to search inside the document.</p>
+        </div>
+      </div>
+
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+
+      <form id="chatForm" style="margin-top: 14px;">
+        <div class="row">
+          <label for="questionInput">Question</label>
+          <textarea id="questionInput" placeholder="Example: summarize the document, what is inside the doc, search for policy details" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button id="askBtn" type="submit">Ask</button>
+          <button id="clearBtn" type="button">Clear Chat</button>
+          <span id="chatStatus" class="muted" style="margin-left: auto;"></span>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    const apiBaseInput = document.getElementById("apiBase");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const fileInput = document.getElementById("fileInput");
+    const chunkSize = document.getElementById("chunkSize");
+    const uploadK = document.getElementById("uploadK");
+    const modelSelect = document.getElementById("modelSelect");
+    const askK = document.getElementById("askK");
+    const uploadStatus = document.getElementById("uploadStatus");
+    const chatStatus = document.getElementById("chatStatus");
+    const chatForm = document.getElementById("chatForm");
+    const chatLog = document.getElementById("chatLog");
+    const questionInput = document.getElementById("questionInput");
+    const askBtn = document.getElementById("askBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let hasVectorStore = false;
+
+    const setStatus = (el, text, kind = "muted") => {
+      el.textContent = text;
+      el.className = `status ${kind}`;
+    };
+
+    const addMessage = (role, text, meta = null) => {
+      const wrap = document.createElement("div");
+      wrap.className = `bubble ${role}`;
+      const body = document.createElement("div");
+      body.textContent = text;
+      wrap.appendChild(body);
+
+      if (meta) {
+        const metaEl = document.createElement("div");
+        metaEl.className = "meta";
+        metaEl.textContent = meta;
+        wrap.appendChild(metaEl);
+      }
+
+      chatLog.appendChild(wrap);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    };
+
+    const readError = async (res) => {
+      try {
+        const data = await res.json();
+        return data?.error || data?.detail || JSON.stringify(data);
+      } catch {
+        return `Request failed (${res.status})`;
+      }
+    };
+
+    uploadBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus(uploadStatus, "Please choose a file first.", "err");
+        return;
+      }
+
+      const base = apiBaseInput.value.trim().replace(/\/$/, "");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("chunk_size", String(chunkSize.value || 256));
+      formData.append("k", String(uploadK.value || 3));
+
+      uploadBtn.disabled = true;
+      setStatus(uploadStatus, "Uploading and indexing document...", "muted");
+
+      try {
+        const res = await fetch(`${base}/upload/`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          hasVectorStore = false;
+          setStatus(uploadStatus, `Upload failed: ${data?.error || "Unknown error"}`, "err");
+          return;
+        }
+
+        hasVectorStore = true;
+        const files = (data.vector_store_files || []).join(", ");
+        setStatus(uploadStatus, `Uploaded and indexed. Files saved: ${files}`, "good");
+        addMessage("assistant", "Document loaded. Ask any question to begin.");
+      } catch (err) {
+        hasVectorStore = false;
+        setStatus(uploadStatus, `Upload failed: ${err.message || "network error"}`, "err");
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      const base = apiBaseInput.value.trim().replace(/\/$/, "");
+      const body = new URLSearchParams();
+      body.set("question", question);
+      body.set("model", modelSelect.value);
+      body.set("k", String(askK.value || 3));
+
+      addMessage("user", question, "Sending...");
+      questionInput.value = "";
+      askBtn.disabled = true;
+      chatStatus.textContent = "Thinking...";
+
+      try {
+        const res = await fetch(`${base}/ask/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString(),
+        });
+
+        if (!res.ok) {
+          const err = await readError(res);
+          hasVectorStore = err.toLowerCase().includes("upload") ? false : hasVectorStore;
+          setStatus(chatStatus, `Error: ${err}`, "err");
+          addMessage("assistant", `Error: ${err}`);
+          if (err.toLowerCase().includes("upload")) {
+            setStatus(uploadStatus, "Vector store missing. Upload a document to continue.", "err");
+          }
+          return;
+        }
+
+        const data = await res.json();
+        setStatus(chatStatus, "Done", "good");
+        addMessage("assistant", data.result || "No response returned.");
+      } catch (err) {
+        setStatus(chatStatus, `Error: ${err.message || "network error"}`, "err");
+      } finally {
+        askBtn.disabled = false;
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      chatLog.innerHTML = "";
+      chatStatus.textContent = "";
+    });
+
+    (async () => {
+      try {
+        const base = apiBaseInput.value.trim().replace(/\/$/, "");
+        const statusRes = await fetch(`${base}/vector-store/status`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.exists) {
+            hasVectorStore = true;
+            const files = (statusData.files || []).join(", ");
+            setStatus(uploadStatus, `Existing vector store loaded from disk. Files: ${files}`, "good");
+            addMessage("assistant", "Existing indexed document found. You can ask questions now.");
+          }
+        }
+      } catch {
+        // ignore and keep default state
+      }
+
+      try {
+        const res = await fetch(`${apiBaseInput.value}/models`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data.models) && data.models.length) {
+          modelSelect.innerHTML = "";
+          for (const name of data.models) {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            modelSelect.appendChild(opt);
+          }
+        }
+      } catch {
+        // keep defaults
+      }
+    })();
+  </script>
+</body>
+</html>

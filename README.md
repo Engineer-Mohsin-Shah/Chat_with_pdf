@@ -1,5 +1,7 @@
 # Chat with PDF
 
+![Chat UI Screenshot](static/screenshots/agent-ui.png)
+
 This project is a FastAPI-based QA application that lets you upload a PDF/DOCX/TXT document, build a vector index, and ask questions about the document through a simple web UI.
 
 ## Features
